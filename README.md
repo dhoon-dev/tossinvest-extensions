@@ -1,0 +1,113 @@
+# tossinvest-extensions
+
+Unofficial Python SDK for Toss Securities web API extensions that are not covered by [`tossinvest-openapi`](https://github.com/dhoon-dev/tossinvest-openapi).
+
+This project is not affiliated with, endorsed by, or maintained by Toss Securities. Web APIs are unofficial and may change without notice.
+
+## Installation
+
+```bash
+uv add tossinvest-extensions
+pip install tossinvest-extensions
+```
+
+## Stock Community Comments
+
+```python
+from tossinvest_extensions import TossInvestExtensionsClient
+
+with TossInvestExtensionsClient() as client:
+    page = client.community.get_stock_comments("000660", sort="RECENT", count=5)
+    for comment in page.results:
+        print(comment.comment_id, comment.author.nickname, comment.message.message)
+```
+
+`stock_code` accepts common stock codes and symbols such as `000660` for Korean
+stocks and `AAPL` for US stocks. TossInvest's internal stock code is resolved by
+the SDK before comments are requested.
+
+```python
+page = client.community.get_stock_comments(
+    "AAPL",
+    sort="RECENT",
+    count=5,
+)
+```
+
+`sort` accepts `"POPULAR"` or `"RECENT"`. `count` is optional and must be a
+positive integer. TossInvest's web API does not expose a page-size query
+parameter, so the SDK fetches additional pages internally when needed and
+truncates `page.results`.
+
+The method returns `CommunityCommentsPage`.
+
+```python
+page.results       # list[CommunityComment]
+page.key           # cursor for the next page
+page.total_count   # total comments reported by TossInvest
+page.has_next      # whether another page is available
+```
+
+Each `CommunityComment` exposes parsed fields for author, body, board metadata,
+statistics, and timestamps.
+
+```python
+comment = page.results[0]
+comment.comment_id
+comment.author.nickname
+comment.message.message
+comment.statistic.like_count
+comment.statistic.reply_count
+comment.created_at
+```
+
+When `count` cuts through the middle of a server page, `page.key` is adjusted to
+the last returned comment ID so it can still be passed as `cursor` for the next
+call.
+
+```python
+first = client.community.get_stock_comments("000660", sort="RECENT", count=5)
+if first.has_next:
+    second = client.community.get_stock_comments(
+        "000660",
+        sort="RECENT",
+        cursor=first.key,
+        count=5,
+    )
+```
+
+Use Pydantic serialization when a dictionary is needed.
+
+```python
+page.model_dump()
+page.model_dump(by_alias=True)
+```
+
+## Async Usage
+
+```python
+import asyncio
+
+from tossinvest_extensions import AsyncTossInvestExtensionsClient
+
+
+async def main() -> None:
+    async with AsyncTossInvestExtensionsClient() as client:
+        page = await client.community.get_stock_comments("AAPL", count=5)
+        print(page.total_count)
+
+
+asyncio.run(main())
+```
+
+## Development
+
+```bash
+uv sync
+uv run ruff format .
+uv run ruff check .
+uv run ty check
+uv run pytest
+uv run --group docs sphinx-build -b html docs docs/_build/html
+uv build
+```

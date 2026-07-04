@@ -1,0 +1,15 @@
+.venv/
+.ruff_cache/
+.pytest_cache/
+.ty/
+.serena/
+.env
+.env.*
+!.env.example
+dist/
+build/
+docs/_build/
+*.egg-info/
+__pycache__/
+*.py[cod]
+openapi/openapi.json
