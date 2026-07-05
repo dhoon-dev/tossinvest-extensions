@@ -7,9 +7,11 @@ from tossinvest_extensions.errors import TossInvestExtensionsValidationError
 
 from .conftest import (
     BASE_URL,
+    CERT_BASE_URL,
     add_result_response,
     comments_page_payload,
     make_client,
+    replies_page_payload,
     stock_info_payload,
     us_stock_info_payload,
 )
@@ -228,6 +230,74 @@ def test_get_comments_uses_subject_id_directly(httpx_mock: HTTPXMock) -> None:
     page = client.community.get_comments("STOCK", "KR7000660001")
 
     assert page.results[0].board.subject_id == "KR7000660001"
+
+
+def test_get_comment_replies_parses_response(httpx_mock: HTTPXMock) -> None:
+    add_result_response(
+        httpx_mock,
+        method="GET",
+        url=f"{CERT_BASE_URL}/api/v2/comments/285316674/replies",
+        match_params={"replySortType": "POPULAR"},
+        result=replies_page_payload(),
+    )
+    client = make_client()
+
+    page = client.community.get_comment_replies(285316674)
+
+    reply = page.results[0]
+    assert reply.comment_id == 285316675
+    assert reply.parent_id == 285316674
+    assert reply.message.message == "Community reply body"
+    assert reply.statistic.like_count == 12
+    assert page.key == 285316675
+    assert page.total_count == 3
+    assert page.has_next
+
+
+def test_get_comment_replies_uses_pagination_params(httpx_mock: HTTPXMock) -> None:
+    add_result_response(
+        httpx_mock,
+        method="GET",
+        url=f"{CERT_BASE_URL}/api/v2/comments/285316674/replies",
+        match_params={
+            "replySortType": "POPULAR",
+            "lastCommentId": "285316675",
+            "lastLikeCount": "12",
+        },
+        result=replies_page_payload([285316676], key=None, has_next=False, like_count=4),
+    )
+    client = make_client()
+
+    page = client.community.get_comment_replies(
+        285316674,
+        cursor=285316675,
+        last_like_count=12,
+    )
+
+    assert page.results[0].comment_id == 285316676
+    assert not page.has_next
+
+
+def test_get_comment_replies_supports_oldest_sort(httpx_mock: HTTPXMock) -> None:
+    add_result_response(
+        httpx_mock,
+        method="GET",
+        url=f"{CERT_BASE_URL}/api/v2/comments/285316674/replies",
+        match_params={"replySortType": "OLDEST"},
+        result=replies_page_payload(key=None, has_next=False),
+    )
+    client = make_client()
+
+    page = client.community.get_comment_replies("285316674", sort="OLDEST")
+
+    assert page.results[0].parent_id == 285316674
+
+
+def test_get_comment_replies_rejects_empty_comment_id() -> None:
+    client = make_client()
+
+    with pytest.raises(TossInvestExtensionsValidationError, match="comment_id must not be empty"):
+        client.community.get_comment_replies(" ")
 
 
 def test_get_stock_info_rejects_empty_stock_code() -> None:

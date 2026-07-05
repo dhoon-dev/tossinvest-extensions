@@ -118,6 +118,58 @@ when the SDK has truncated ``page.results``.
            count=5,
        )
 
+Comment replies
+^^^^^^^^^^^^^^^
+
+Use ``get_comment_replies`` with a parent comment ID to read replies to a
+community comment.
+
+.. code-block:: python
+
+   replies = client.community.get_comment_replies(
+       comment.comment_id,
+       sort="POPULAR",
+   )
+
+   for reply in replies.results:
+       print(reply.parent_id, reply.comment_id, reply.message.message)
+
+Signature:
+
+.. code-block:: python
+
+   get_comment_replies(
+       comment_id: int | str,
+       *,
+       sort: ReplySortType = "POPULAR",
+       cursor: int | str | None = None,
+       last_like_count: int | None = None,
+   ) -> CommunityCommentsPage
+
+``sort`` accepts ``"POPULAR"``, ``"NEWEST"``, and ``"OLDEST"``. The return
+value is the same ``CommunityCommentsPage`` shape used by
+``get_stock_comments``. Each reply is parsed as ``CommunityComment`` with
+``parent_id`` set to the parent comment ID.
+
+For the next replies page, pass ``page.key`` as ``cursor``. TossInvest's web
+app also sends the like count from the last reply as ``lastLikeCount`` while
+paginating replies; pass that value as ``last_like_count``. This is mainly
+relevant for ``"POPULAR"`` sorting: the server appears to use the last reply's
+like count as an extra cursor value because popular replies are not ordered by
+comment ID alone. It is optional for the first page and is usually unnecessary
+for ``"NEWEST"`` or ``"OLDEST"``.
+
+.. code-block:: python
+
+   if replies.has_next and replies.results:
+       last = replies.results[-1]
+       next_replies = client.community.get_comment_replies(
+           comment.comment_id,
+           sort="POPULAR",
+           cursor=replies.key,
+           last_like_count=last.statistic.like_count,
+       )
+
 Async usage
 ^^^^^^^^^^^
 

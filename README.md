@@ -61,6 +61,41 @@ comment.statistic.reply_count
 comment.created_at
 ```
 
+## Comment Replies
+
+Use `get_comment_replies` with a parent comment ID to read replies.
+
+```python
+replies = client.community.get_comment_replies(
+    comment.comment_id,
+    sort="POPULAR",
+)
+for reply in replies.results:
+    print(reply.parent_id, reply.comment_id, reply.message.message)
+```
+
+`sort` accepts `"POPULAR"`, `"NEWEST"`, or `"OLDEST"`. The method returns the
+same `CommunityCommentsPage` shape used for stock comments. Reply objects are
+`CommunityComment` instances with `parent_id` set to the parent comment ID.
+
+For the next replies page, pass `page.key` as `cursor`. TossInvest's web app
+also sends the like count from the last reply as `lastLikeCount`, which the SDK
+exposes as `last_like_count`. This is mainly relevant for `"POPULAR"` sorting:
+the server appears to use the last reply's like count as an extra cursor value
+because popular replies are not ordered by comment ID alone. It is optional for
+the first page and is usually unnecessary for `"NEWEST"` or `"OLDEST"`.
+
+```python
+if replies.has_next and replies.results:
+    last = replies.results[-1]
+    next_replies = client.community.get_comment_replies(
+        comment.comment_id,
+        sort="POPULAR",
+        cursor=replies.key,
+        last_like_count=last.statistic.like_count,
+    )
+```
+
 When `count` cuts through the middle of a server page, `page.key` is adjusted to
 the last returned comment ID so it can still be passed as `cursor` for the next
 call.

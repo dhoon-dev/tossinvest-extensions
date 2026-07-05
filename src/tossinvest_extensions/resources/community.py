@@ -9,6 +9,7 @@ from tossinvest_extensions.models import (
     CommentSortType,
     CommunityComment,
     CommunityCommentsPage,
+    ReplySortType,
     StockInfo,
     SubjectType,
     normalize_stock_code,
@@ -16,6 +17,8 @@ from tossinvest_extensions.models import (
 )
 
 from ._utils import require_non_empty, require_positive_int
+
+CERT_BASE_URL = "https://wts-cert-api.tossinvest.com"
 
 
 def _limited_comments_page(
@@ -44,6 +47,12 @@ def _stock_info_lookup_path(stock_code: str) -> str:
     """Return the stock-info lookup path for a common stock code or symbol."""
     code = require_non_empty("stock_code", normalize_stock_code(stock_code))
     return f"/api/v2/stock-infos/code-or-symbol/{quote(code, safe='')}"
+
+
+def _comment_replies_path(comment_id: int | str) -> str:
+    """Return the comment replies endpoint for a TossInvest comment ID."""
+    comment_id_value = require_non_empty("comment_id", str(comment_id).strip())
+    return f"{CERT_BASE_URL}/api/v2/comments/{quote(comment_id_value, safe='')}/replies"
 
 
 class CommunityResource:
@@ -107,6 +116,45 @@ class CommunityResource:
                 "subjectId": require_non_empty("subject_id", subject_id),
                 "commentSortType": sort,
                 "lastCommentId": cursor,
+            },
+        )
+        return parse_model(CommunityCommentsPage, result)
+
+    def get_comment_replies(
+        self,
+        comment_id: int | str,
+        *,
+        sort: ReplySortType = "POPULAR",
+        cursor: int | str | None = None,
+        last_like_count: int | None = None,
+    ) -> CommunityCommentsPage:
+        """Return a page of replies for a community comment.
+
+        Args:
+            comment_id: Parent community comment identifier.
+            sort: Reply sort order. ``"POPULAR"`` mirrors the web page
+                default; ``"NEWEST"`` returns newest replies first; and
+                ``"OLDEST"`` returns registration order.
+            cursor: Optional ``key`` from the previous replies page.
+            last_like_count: Optional like count of the last reply from the
+                previous page. TossInvest's web app sends this with
+                ``lastCommentId`` while paginating replies.
+
+        Returns:
+            A ``CommunityCommentsPage`` containing one server page of replies.
+
+        Raises:
+            TossInvestExtensionsValidationError: ``comment_id`` is empty.
+            TossInvestExtensionsAPIError: The web API returns an error response.
+
+        """
+        result = self._http.request(
+            "GET",
+            _comment_replies_path(comment_id),
+            params={
+                "replySortType": sort,
+                "lastCommentId": cursor,
+                "lastLikeCount": last_like_count,
             },
         )
         return parse_model(CommunityCommentsPage, result)
@@ -234,6 +282,45 @@ class AsyncCommunityResource:
                 "subjectId": require_non_empty("subject_id", subject_id),
                 "commentSortType": sort,
                 "lastCommentId": cursor,
+            },
+        )
+        return parse_model(CommunityCommentsPage, result)
+
+    async def get_comment_replies(
+        self,
+        comment_id: int | str,
+        *,
+        sort: ReplySortType = "POPULAR",
+        cursor: int | str | None = None,
+        last_like_count: int | None = None,
+    ) -> CommunityCommentsPage:
+        """Return a page of replies for a community comment.
+
+        Args:
+            comment_id: Parent community comment identifier.
+            sort: Reply sort order. ``"POPULAR"`` mirrors the web page
+                default; ``"NEWEST"`` returns newest replies first; and
+                ``"OLDEST"`` returns registration order.
+            cursor: Optional ``key`` from the previous replies page.
+            last_like_count: Optional like count of the last reply from the
+                previous page. TossInvest's web app sends this with
+                ``lastCommentId`` while paginating replies.
+
+        Returns:
+            A ``CommunityCommentsPage`` containing one server page of replies.
+
+        Raises:
+            TossInvestExtensionsValidationError: ``comment_id`` is empty.
+            TossInvestExtensionsAPIError: The web API returns an error response.
+
+        """
+        result = await self._http.request(
+            "GET",
+            _comment_replies_path(comment_id),
+            params={
+                "replySortType": sort,
+                "lastCommentId": cursor,
+                "lastLikeCount": last_like_count,
             },
         )
         return parse_model(CommunityCommentsPage, result)

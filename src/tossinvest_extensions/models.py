@@ -7,6 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 type CommentSortType = Literal["POPULAR", "RECENT"]
+type ReplySortType = Literal["POPULAR", "NEWEST", "OLDEST"]
 type SubjectType = Literal["STOCK", "NEWS", "LOUNGE", "CONTENTS", "ETC", "OPTION", "PROFILE"]
 
 
@@ -182,8 +183,9 @@ class CommunityCommentsPage(TossInvestExtensionsModel):
     """Paginated community comments response.
 
     Attributes:
-        results: Comments returned for this page. When ``count`` is passed to
-            ``get_stock_comments``, this list is truncated to that count.
+        results: Comments or replies returned for this page. When ``count`` is
+            passed to ``get_stock_comments``, this list is truncated to that
+            count.
         key: Cursor for the next page. Pass this value as ``cursor`` to
             continue pagination.
         total_count: Total number of comments reported by TossInvest.

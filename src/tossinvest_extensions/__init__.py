@@ -19,6 +19,7 @@ from .models import (
     CommunityMedia,
     CommunityMessage,
     CommunityStatistic,
+    ReplySortType,
     StockInfo,
     SubjectType,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "CommunityMedia",
     "CommunityMessage",
     "CommunityStatistic",
+    "ReplySortType",
     "StockInfo",
     "SubjectType",
     "TossInvestExtensionsAPIError",
