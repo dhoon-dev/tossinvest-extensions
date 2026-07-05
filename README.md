@@ -146,3 +146,50 @@ uv run pytest
 uv run --group docs sphinx-build -b html docs docs/_build/html
 uv build
 ```
+
+Install the repository commit hook before committing locally:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+## Commit and Release Policy
+
+Commit messages follow the same repository policy as `tossinvest-openapi`.
+
+- Allowed types: `feat`, `fix`, `chore`, `docs`, `test`, `refactor`, `ci`.
+- Title format: `<type>: <summary>` or `<type>(scope): <summary>`.
+- Title length: 50 characters or fewer.
+- Body required after one blank line.
+- Body lines: 72 characters or fewer.
+- English only unless a translation is explicitly requested.
+
+Validate the current commit or a range manually:
+
+```bash
+uv run --locked python scripts/check_commit_messages.py --range -1
+uv run --locked python scripts/check_commit_messages.py --range origin/main..HEAD
+```
+
+Version bumps must update all package version declarations together:
+
+- `pyproject.toml` `[project].version`
+- `src/tossinvest_extensions/_version.py` `__version__`
+- `docs/conf.py` `release`
+- `uv.lock` package `tossinvest-extensions` version
+
+After editing source declarations, update the lockfile and validate the release
+tag:
+
+```bash
+uv lock
+uv run --locked python scripts/validate_release_tag.py vX.Y.Z
+```
+
+The GitHub Actions workflow in `.github/workflows/ci.yml` runs formatting,
+linting, type checking, mocked unit tests, documentation builds, package builds,
+commit-message validation, and release-tag validation on `v*` tag pushes.
+Pushing a `v*` tag starts `.github/workflows/release.yml`, which creates a draft
+GitHub Release with package and documentation artifacts. Published manual
+release runs can deploy documentation to GitHub Pages when `deploy_docs=true`
+and Pages is configured to use GitHub Actions.
